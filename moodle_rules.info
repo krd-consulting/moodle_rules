@@ -1,0 +1,8 @@
+name = Moodle Rules
+description = "Custom Drupal Rules conditions/actions created for interaction with Moodle 3.x."
+core = 7.x
+package = Moodle Tools
+
+dependencies[] = rules
+dependencies[] = civicrm
+dependencies[] = civicrm_entity

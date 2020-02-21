@@ -1,0 +1,91 @@
+<?php
+require __DIR__ . '/vendor/autoload.php';
+
+
+function moodle_rules_rules_action_info() {
+	$actions = [
+		'moodle_rules_action_insert_user_data' => [
+				'label' => t('Insert user and civicrm data to moodle'),
+				'group' => t('Moodle Tools'),
+				'parameter' => [
+					'id' => [
+						'type' => 'text',
+						'label' => 'The Drupal user\'s uid'
+					],
+					'user_name' => [
+						'type' => 'text',
+						'label' => 'The Drupal user\'s username'
+					],
+					'first_name' => [
+						'type' => 'text',
+						'label' => 'The Drupal user\'s first name in CiviCRM'
+					],
+					'last_name' => [
+						'type' => 'text',
+						'label' => 'The Drupal user\'s last name in CiviCRM'
+					],
+					'email' => [
+						'type' => 'text',
+						'label' => 'The Drupal user\'s email address'
+					]
+				]
+		]
+	];
+
+	return $actions;
+}
+
+function moodle_rules_action_insert_user_data($id, $username, $first_name, $last_name, $email) {
+	// Read settings from .env
+	$dotenv = Dotenv\Dotenv::createImmutable(__DIR__);
+	$dotenv->load();
+	$user = getenv('DB_USERNAME');
+	$password = getenv('DB_PASSWORD');
+	$db = getenv('DB_NAME');
+	$users_table = getenv('DB_USERS_TABLE');
+
+	// Connect to Moodle DB.
+	$connection = new mysqli("127.0.0.1", $user, $password, $db);
+
+	// Check connection.
+	if (mysqli_connect_errno()) {
+	    watchdog('moodle_rules', t('Couldn\'t connect to Moodle database. ' . mysqli_connect_error()), array(), WATCHDOG_ERROR);
+	    return;
+	}
+
+	$query = "SELECT id,idnumber FROM $users_table WHERE idnumber = $id";
+	$row = NULL;
+	if ($result = $connection->query($query)) {
+	    $row = $result->fetch_row();
+	    $result->close();
+	}
+
+	if ($row == NULL) {
+		$query = "INSERT INTO $users_table 
+				(idnumber, auth, confirmed, mnethostid, username, firstname, lastname, email, city, country) 
+			VALUES 
+				(?,?,?,?,?,?,?,?,?,?)";
+		$statement = $connection->prepare($query);
+		$statement->bind_param(
+			"ssssssssss", 
+			$id, 
+			$auth = 'drupalservices', 
+			$confirmed = '1', 
+			$mnethostid = '1',
+			$username, 
+			$first_name, 
+			$last_name, 
+			$email,
+			$city = 'none',
+			$country = 'no'
+		);
+
+		try {
+			$statement->execute();
+		} catch (Exception $e) {
+			watchdog('moodle_rules', t('Something went wrong on query execution.'), array(), WATCHDOG_ERROR);
+		}
+	}
+
+	mysqli_close($connection);
+}
