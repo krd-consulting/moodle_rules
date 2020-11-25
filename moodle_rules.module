@@ -82,9 +82,12 @@ function moodle_rules_action_insert_user_data($id, $username, $first_name, $last
 
 		try {
 			$statement->execute();
+			watchdog('moodle_rules', t("Trying to add $email to moodle..."), array(), WATCHDOG_INFO);
 		} catch (Exception $e) {
 			watchdog('moodle_rules', t('Something went wrong on query execution.'), array(), WATCHDOG_ERROR);
 		}
+		
+		watchdog('moodle_rules', t("$email has been added to moodle."), array(), WATCHDOG_INFO);
 	}
 
 	mysqli_close($connection);
